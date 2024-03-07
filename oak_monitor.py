@@ -1,17 +1,14 @@
 import argparse
 import json
 import os
-import requests
-import re
-from datetime import datetime
 import time
 
-import subprocess
 from router_info import RouterInfo
 from common import CommonFunctions
 
-ri = RouterInfo("192.168.2.1", "admin", os.environ['ROUTER_PWD'])
+ri = RouterInfo("192.168.2.1", "admin", os.environ.get('ROUTER_PWD'))
 ci = CommonFunctions
+metrics_directory = os.environ.get('SCRAPE_DIRECTORY')
 
 
 def get_bw():
@@ -33,29 +30,20 @@ def get_bw():
     return {"up": avg_up, "down": avg_down}
 
 
-#cl = ci.create_prom_data('asus_number_clients', 15)
-#print(cl)
-
-#cl2 = ci.create_prom_data('bogus', 100, [('key', 'value'), ('key2', 'value2')])
-#print(cl2)
-
-
-
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--bandwidth",
-                        help="If we should check bandwidth or not", required=False, default=False, action='store_true')
+                        help="If we should check bandwidth or not",
+                        required=False, default=False, action='store_true')
     parser.add_argument("--router",
-                        help="If we should check other metrics from router", required=False, default=False, action='store_true')
-
+                        help="If we should check other metrics from router",
+                        required=False, default=False, action='store_true')
     args = parser.parse_args()
+    date_format = '%Y%m%d_%H%M%S'
+    current_time = time.strftime(date_format)
 
     if args.bandwidth:
-        print('We should check bandwidth')
-        date_format = '%Y%m%d_%H%M%S'
-        current_time = time.strftime(date_format)
+        print('Running router bandwidth check')
         tmp_file = 'tmp_' + current_time + '_nw.prom'
         network_usage = get_bw()
         network_usage_metric = ci.create_prom_data('asus_network_utilization', network_usage['up'], [('type', 'up')])
@@ -63,14 +51,23 @@ if __name__ == '__main__':
                                                     [('type', 'down')])
         ci.append_to_file(network_usage_metric, tmp_file)
         ci.append_to_file(network_usage_metric2, tmp_file)
-        ci.copy_file(tmp_file, 'asus_nw.prom')
-
+        if metrics_directory:
+            ci.copy_file(tmp_file, metrics_directory + 'asus_nw.prom')
+        else:
+            ci.copy_file(tmp_file, 'asus_nw.prom')
     elif args.router:
-        print('We should do normal')
+        print('Running normal router check')
+        tmp_file = 'tmp_' + current_time + '_router.prom'
         latency = ci.latency_point()
-        print(latency)
+        latency_metric = ci.create_prom_data('asus_latency', latency)
         number_clients = len(ri.get_clients_info())
-        print(number_clients)
+        client_metric = ci.create_prom_data('asus_connected_clients', number_clients)
+        ci.append_to_file(latency_metric, tmp_file)
+        ci.append_to_file(client_metric, tmp_file)
+        if metrics_directory:
+            ci.copy_file(tmp_file, metrics_directory + 'asus_metrics.prom')
+        else:
+            ci.copy_file(tmp_file, 'asus_metrics.prom')
     else:
         print('We need something to check. Aborting. Use --help for pointers')
         exit(0)
