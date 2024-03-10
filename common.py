@@ -1,7 +1,8 @@
 import os
 import socket
 import shutil
-from time import sleep, monotonic
+# from time import sleep, monotonic, time
+import time
 
 
 class CommonFunctions:
@@ -14,7 +15,7 @@ class CommonFunctions:
         '''
 
         # Start a timer
-        s_start = monotonic()
+        s_start = time.monotonic()
 
         # Try to Connect
         try:
@@ -30,7 +31,7 @@ class CommonFunctions:
             return None
 
         # Stop Timer
-        s_runtime = (monotonic() - s_start) * 1000
+        s_runtime = (time.monotonic() - s_start) * 1000
 
         return round(float(s_runtime), 2)
 
@@ -58,16 +59,16 @@ class CommonFunctions:
         return output_string
 
     @staticmethod
-    def append_to_file(prom_data, file_name):
-        with open(file_name, 'a') as file:
-            l1 = prom_data + "\n"
-            file.writelines(l1)
-
-    @staticmethod
-    def write_to_file(prom_data, file_name):
-        with open(file_name, 'w') as file:
-            file.writelines(prom_data)
-
-    @staticmethod
     def copy_file(source_file, target_file):
         shutil.copy(source_file, target_file)
+
+    @staticmethod
+    def store_metrics(metric_list: list, file_name):
+        date_format = '%Y%m%d_%H%M%S'
+        current_time = time.strftime(date_format)
+        tmp_file = 'tmp_' + current_time + '.tmp'
+        with open(tmp_file, 'a') as file:
+            for line in metric_list:
+                file.write(line + '\n')
+        shutil.copy(tmp_file, file_name)
+        os.remove(tmp_file)

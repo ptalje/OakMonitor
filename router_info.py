@@ -32,7 +32,7 @@ class RouterInfo:
             'user-agent': "asusrouter-Android-DUTUtil-1.0.0.245"
         }
         try:
-            r = requests.post(url='http://{}/login.cgi'.format(ipaddress), data=payload, headers=headers).json()
+            r = requests.post(url='http://{}/login.cgi'.format(ipaddress), data=payload, headers=headers, timeout=10).json()
         except:
             return False
         if "asus_token" in r:
