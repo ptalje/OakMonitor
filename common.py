@@ -33,7 +33,7 @@ class CommonFunctions:
         # Stop Timer
         s_runtime = (time.monotonic() - s_start) * 1000
 
-        return round(float(s_runtime), 2)
+        return round(float(s_runtime), 2), host
 
     @staticmethod
     def create_prom_data(metric_identifier, metric_value, labels: list = None):

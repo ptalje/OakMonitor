@@ -43,6 +43,9 @@ if __name__ == '__main__':
 
     if args.bandwidth:
         print('Running router bandwidth check')
+        # Since the network usage is calculated by comparing total data sent/received between two timestamps,
+        # run this separately
+
         network_usage = get_bw()
         network_usage_metric = ci.create_prom_data('asus_network_utilization', network_usage['up'], [('type', 'up')])
         network_usage_metric2 = ci.create_prom_data('asus_network_utilization', network_usage['down'],
@@ -52,11 +55,21 @@ if __name__ == '__main__':
 
     elif args.router:
         print('Running normal router check')
-        latency = ci.latency_point()
-        latency_metric = ci.create_prom_data('asus_latency', latency)
+        # Retrieving data
+        latency_google, host = ci.latency_point()
+        latency_isp, isp_host = ci.latency_point('www.ownit.se')
         number_clients = len(ri.get_clients_info())
+        wan_status = ri.get_status_wan()
+
+        # Building metrics
+        latency_metric = ci.create_prom_data('asus_latency', latency_google, [('host', host)])
+        latency_metric_isp = ci.create_prom_data('asus_latency', latency_isp, [('host', isp_host)])
         client_metric = ci.create_prom_data('asus_connected_clients', number_clients)
-        metrics_list = [latency_metric, client_metric]
+        metric_wan = ci.create_prom_data('asus_wan_status', wan_status['status'])
+
+        # Create a list of metrics to store
+        metrics_list = [latency_metric, latency_metric_isp, client_metric, metric_wan]
+
         ci.store_metrics(metrics_list, args.target + '/asus_metrics.prom')
 
     else:
