@@ -51,8 +51,21 @@ Adding these commands to a cron job on a Raspberry Pi running Prometheus and Gra
 
 By connecting the Prometheus metrics to Grafana it was possible to visualize the data, and to see trends.
 
-
-
 A nice feature of the Prometheus/Node exporter tool is the possibility to add custom metrics in an easy way.
 
+## Tibber exporter
+
+I started playing around with GraphQL queries that could be used to retrieve information about my
+electricity consumption and price, as it could be a good addition to the dashboard.
+
+However, I realized that I didn't have to reinvent the wheel completely, as I discovered a Python script that
+starts a node exporter containing all the necessary information for me here; 
+https://github.com/Pelleplutt/tibber-exporter
+
+Actually, as of this writing the main branch class was outdated due to API changes on Tibber so it didn't work.
+But an open PR lead me to a WIP development that solved the problem for me. 
+
+This is the version I grabbed.
+https://github.com/Pelleplutt/tibber-exporter/blob/new-api-202212/tibber-exporter.py
+commit https://github.com/Pelleplutt/tibber-exporter/commit/09ac13d782658bbe5e4676b64bee9cfbeac95b0a
 
