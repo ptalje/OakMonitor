@@ -13,7 +13,7 @@ ci = CommonFunctions
 def get_bw():
     # Calculate the average transfer speed by getting transfer data between two events
     # {'sent': '12033.441837310791', 'recv': '1560.4690246582031'}
-    waiting_period = 40
+    waiting_period = 110
     traffic_before = ri.get_traffic_total()
     time.sleep(waiting_period)
     traffic_after = ri.get_traffic_total()
