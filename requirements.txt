@@ -1,0 +1,4 @@
+asyncio
+requests==2.31.0
+python-graphql-client>=0.4.1
+prometheus_client
