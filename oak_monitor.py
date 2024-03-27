@@ -28,14 +28,32 @@ def get_bw():
     return {"up": avg_send_speed, "down": avg_recv_speed}
 
 
+def create_nw_usage_metric(period: str):
+    if period not in ['current', 'daily']:
+        # We should only allow current/daily metrics
+        return None
+    data = ri.get_traffic_total()
+    total_up = round(float(data['sent']), 2)
+    total_down = round(float(data['recv']), 2)
+    down_metric = ci.create_prom_data('asus_total_traffic', str(total_down),
+                                      [('type', 'down'),('state', period)])
+    up_metric = ci.create_prom_data('asus_total_traffic', str(total_up),
+                                    [('type', 'up'),('state', period)])
+    metric_list = [down_metric, up_metric]
+    return metric_list
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--bandwidth",
                         help="If we should check bandwidth or not",
-                        required=False, default=False, action='store_true')
+                        required=False, default=False, action="store_true")
     parser.add_argument("--router",
                         help="If we should check other metrics from router",
-                        required=False, default=False, action='store_true')
+                        required=False, default=False, action="store_true")
+    parser.add_argument("--daily",
+                        help="This adds a new metric for presenting the total traffic during the past 24 hours",
+                        required=False, default=False, action="store_true")
     parser.add_argument("--target",
                         help="The target directory for scrape folder, without ending slash, e.g. /opt/scrape_dir",
                         required=True)
@@ -66,11 +84,18 @@ if __name__ == '__main__':
         latency_metric_isp = ci.create_prom_data('asus_latency', latency_isp, [('host', isp_host)])
         client_metric = ci.create_prom_data('asus_connected_clients', number_clients)
         metric_wan = ci.create_prom_data('asus_wan_status', wan_status['status'])
+        current_total = create_nw_usage_metric('current')
 
         # Create a list of metrics to store
-        metrics_list = [latency_metric, latency_metric_isp, client_metric, metric_wan]
+        metrics_list = [latency_metric, latency_metric_isp, client_metric, metric_wan] + current_total
 
         ci.store_metrics(metrics_list, args.target + '/asus_metrics.prom')
+
+    elif args.daily:
+        print('Create metric with total traffic on router')
+        daily_total = create_nw_usage_metric('daily')
+        # metrics_list = [daily_total]
+        ci.store_metrics(daily_total, args.target + '/asus_daily.prom')
 
     else:
         print('We need something to check. Aborting. Use --help for pointers')
