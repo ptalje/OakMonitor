@@ -33,17 +33,17 @@ def get_bw():
 
 
 def update_current_nw_usage(up_value, down_value):
-    current_up = ci.read_file(daily_tx_counter)
-    current_down = ci.read_file(daily_rx_counter)
+    current_up = ci.read_file(args.target + '/' + daily_tx_counter)
+    current_down = ci.read_file(args.target + '/' + daily_rx_counter)
     new_up = round(float(current_up) + float(up_value), 2)
     new_down = round(float(current_down) + float(down_value), 2)
-    ci.write_line_to_file(str(new_up), daily_tx_counter)
-    ci.write_line_to_file(str(new_down), daily_rx_counter)
+    ci.write_line_to_file(str(new_up), args.target + '/' + daily_tx_counter)
+    ci.write_line_to_file(str(new_down), args.target + '/' + daily_rx_counter)
 
 
 def usage_metrics_builder():
-    current_up = ci.read_file(daily_tx_counter)
-    current_down = ci.read_file(daily_rx_counter)
+    current_up = ci.read_file(args.target + '/' + daily_tx_counter)
+    current_down = ci.read_file(args.target + '/' + daily_rx_counter)
     daily_up_metric = ci.create_prom_data('asus_daily_usage', current_up, [('type', 'up')])
     daily_down_metric = ci.create_prom_data('asus_daily_usage', current_down,[('type', 'down')])
     metrics_builder = [daily_up_metric, daily_down_metric]
@@ -100,8 +100,8 @@ if __name__ == '__main__':
 
     elif args.reset:
         print('Resetting daily counter')
-        ci.write_line_to_file('0.0', daily_rx_counter)
-        ci.write_line_to_file('0.0', daily_tx_counter)
+        ci.write_line_to_file('0.0', args.target + '/' + daily_rx_counter)
+        ci.write_line_to_file('0.0', args.target + '/' + daily_tx_counter)
 
     else:
         print('We need something to check. Aborting. Use --help for pointers')
