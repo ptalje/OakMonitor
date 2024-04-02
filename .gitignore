@@ -1,3 +1,8 @@
 .idea
 __pycache__/
-tmp_*.prom
+
+# Temporary files
+daily_counter*.tmp
+
+# Metrics from local runner
+*.prom

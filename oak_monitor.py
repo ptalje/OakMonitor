@@ -1,5 +1,4 @@
 import argparse
-import json
 import os
 import time
 
@@ -8,6 +7,8 @@ from common import CommonFunctions
 
 ri = RouterInfo("192.168.2.1", "admin", os.environ.get('ROUTER_PWD'))
 ci = CommonFunctions
+daily_rx_counter = "daily_counter_rx.tmp"
+daily_tx_counter = "daily_counter_tx.tmp"
 
 
 def get_bw():
@@ -19,28 +20,34 @@ def get_bw():
     traffic_after = ri.get_traffic_total()
     sent_data = float(traffic_after['sent']) - float(traffic_before['sent'])
     recv_data = float(traffic_after['recv']) - float(traffic_before['recv'])
-    # print('Received data during period (Mb): {}'.format(recv_data))
-    # print('Sent data during period (Mb): {}'.format(sent_data))
+
+    rx_data = max(0.0, recv_data)
+    tx_data = max(0.0, sent_data)
+    update_current_nw_usage(tx_data, rx_data)
+
+    # Calculate avg send/recv speed. In case recv/sent values are reset during period, do not return negative speed
     avg_send_speed = round(float(sent_data / waiting_period), 2)
     avg_recv_speed = round(float(recv_data / waiting_period), 2)
-    # print('Average send speed (Mb/s): {}'.format(avg_send_speed))
-    # print('Average recv speed (Mb/s): {}'.format(avg_recv_speed))
-    return {"up": avg_send_speed, "down": avg_recv_speed}
+
+    return {"up": max(0.0, avg_send_speed), "down": max(0.0, avg_recv_speed)}
 
 
-def create_nw_usage_metric(period: str):
-    if period not in ['current', 'daily']:
-        # We should only allow current/daily metrics
-        return None
-    data = ri.get_traffic_total()
-    total_up = round(float(data['sent']), 2)
-    total_down = round(float(data['recv']), 2)
-    down_metric = ci.create_prom_data('asus_total_traffic', str(total_down),
-                                      [('type', 'down'),('state', period)])
-    up_metric = ci.create_prom_data('asus_total_traffic', str(total_up),
-                                    [('type', 'up'),('state', period)])
-    metric_list = [down_metric, up_metric]
-    return metric_list
+def update_current_nw_usage(up_value, down_value):
+    current_up = ci.read_file(daily_tx_counter)
+    current_down = ci.read_file(daily_rx_counter)
+    new_up = round(float(current_up) + float(up_value), 2)
+    new_down = round(float(current_down) + float(down_value), 2)
+    ci.write_line_to_file(str(new_up), daily_tx_counter)
+    ci.write_line_to_file(str(new_down), daily_rx_counter)
+
+
+def usage_metrics_builder():
+    current_up = ci.read_file(daily_tx_counter)
+    current_down = ci.read_file(daily_rx_counter)
+    daily_up_metric = ci.create_prom_data('asus_daily_usage', current_up, [('type', 'up')])
+    daily_down_metric = ci.create_prom_data('asus_daily_usage', current_down,[('type', 'down')])
+    metrics_builder = [daily_up_metric, daily_down_metric]
+    return metrics_builder
 
 
 if __name__ == '__main__':
@@ -51,8 +58,8 @@ if __name__ == '__main__':
     parser.add_argument("--router",
                         help="If we should check other metrics from router",
                         required=False, default=False, action="store_true")
-    parser.add_argument("--daily",
-                        help="This adds a new metric for presenting the total traffic during the past 24 hours",
+    parser.add_argument("--reset",
+                        help="This restores the daily network usage counter",
                         required=False, default=False, action="store_true")
     parser.add_argument("--target",
                         help="The target directory for scrape folder, without ending slash, e.g. /opt/scrape_dir",
@@ -68,7 +75,8 @@ if __name__ == '__main__':
         network_usage_metric = ci.create_prom_data('asus_network_utilization', network_usage['up'], [('type', 'up')])
         network_usage_metric2 = ci.create_prom_data('asus_network_utilization', network_usage['down'],
                                                     [('type', 'down')])
-        metrics_list = [network_usage_metric, network_usage_metric2]
+        usage_metrics = usage_metrics_builder()
+        metrics_list = [network_usage_metric, network_usage_metric2] + usage_metrics
         ci.store_metrics(metrics_list, args.target + '/asus_nw.prom')
 
     elif args.router:
@@ -84,18 +92,16 @@ if __name__ == '__main__':
         latency_metric_isp = ci.create_prom_data('asus_latency', latency_isp, [('host', isp_host)])
         client_metric = ci.create_prom_data('asus_connected_clients', number_clients)
         metric_wan = ci.create_prom_data('asus_wan_status', wan_status['status'])
-        current_total = create_nw_usage_metric('current')
 
         # Create a list of metrics to store
-        metrics_list = [latency_metric, latency_metric_isp, client_metric, metric_wan] + current_total
+        metrics_list = [latency_metric, latency_metric_isp, client_metric, metric_wan]
 
         ci.store_metrics(metrics_list, args.target + '/asus_metrics.prom')
 
-    elif args.daily:
-        print('Create metric with total traffic on router')
-        daily_total = create_nw_usage_metric('daily')
-        # metrics_list = [daily_total]
-        ci.store_metrics(daily_total, args.target + '/asus_daily.prom')
+    elif args.reset:
+        print('Resetting daily counter')
+        ci.write_line_to_file('0.0', daily_rx_counter)
+        ci.write_line_to_file('0.0', daily_tx_counter)
 
     else:
         print('We need something to check. Aborting. Use --help for pointers')

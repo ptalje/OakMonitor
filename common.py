@@ -1,7 +1,6 @@
 import os
 import socket
 import shutil
-# from time import sleep, monotonic, time
 import time
 
 
@@ -9,10 +8,10 @@ class CommonFunctions:
 
     @staticmethod
     def latency_point(host: str = 'www.google.com', port: int = 443, timeout: float = 5):
-        '''
+        """
         :rtype: Returns float if possible
         Calculate a latency point using sockets. If something bad happens the point returned is None
-        '''
+        """
 
         # Start a timer
         s_start = time.monotonic()
@@ -61,6 +60,17 @@ class CommonFunctions:
     @staticmethod
     def copy_file(source_file, target_file):
         shutil.copy(source_file, target_file)
+
+    @staticmethod
+    def write_line_to_file(text_string, target_file):
+        with open(target_file, 'w') as file:
+            file.write(text_string)
+
+    @staticmethod
+    def read_file(source_file):
+        with open(source_file, 'r') as file:
+            data = file.read()
+            return data
 
     @staticmethod
     def store_metrics(metric_list: list, file_name):
